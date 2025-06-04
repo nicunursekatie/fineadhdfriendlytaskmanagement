@@ -14,6 +14,10 @@ import Index from "./pages";
 import LoginForm from "./pages/login";
 import SignupForm from "./pages/signup";
 import Logout from "./pages/logout";
+import BrainDumpPage from "./pages/brain-dump";
+import AchievementsPage from "./pages/achievements";
+import TaskDetailPage from "./pages/task-detail";
+
 const queryClient = new QueryClient();
 
 createRoot(document.getElementById("root")!).render(
@@ -26,6 +30,9 @@ createRoot(document.getElementById("root")!).render(
             <Route path='/login' element={<LoginForm />} />
             <Route path='/signup' element={<SignupForm />} />
             <Route path='/logout' element={<Logout />} />
+            <Route path='/brain-dump' element={<BrainDumpPage />} />
+            <Route path='/achievements' element={<AchievementsPage />} />
+            <Route path='/task/:taskId' element={<TaskDetailPage />} />
           </Routes>
         </BrowserRouter>
         <Sonner />
