@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { TaskForm } from "@/components/task-form";
+import { fine } from "@/lib/fine";
 
 // Default user ID for single-user app
 const DEFAULT_USER_ID = "single-user";
