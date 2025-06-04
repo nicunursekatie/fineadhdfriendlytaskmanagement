@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ProtectedRoute } from "@/components/auth/route-components";
 import { EnergySelector } from "@/components/ui/energy-selector";
 import { PriorityBadge } from "@/components/ui/priority-badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +16,9 @@ import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CheckCircle, Clock, Edit, Loader2, Plus, Trash2 } from "lucide-react";
 import type { Schema } from "@/lib/db-types";
+
+// Default user ID for single-user app
+const DEFAULT_USER_ID = "single-user";
 
 const TaskDetailPage = () => {
   const { taskId } = useParams<{ taskId: string }>();
@@ -31,13 +33,12 @@ const TaskDetailPage = () => {
   
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { data: session } = fine.auth.useSession();
 
   useEffect(() => {
-    if (session?.user && taskId) {
+    if (taskId) {
       fetchTaskData();
     }
-  }, [session, taskId]);
+  }, [taskId]);
 
   const fetchTaskData = async () => {
     setIsLoading(true);
@@ -46,7 +47,7 @@ const TaskDetailPage = () => {
       const tasks = await fine.table("tasks")
         .select("*")
         .eq("id", Number(taskId))
-        .eq("userId", session!.user.id);
+        .eq("userId", DEFAULT_USER_ID);
       
       if (tasks.length === 0) {
         toast({
@@ -627,6 +628,4 @@ const TaskDetailPage = () => {
   );
 };
 
-export default function TaskDetailPageWrapper() {
-  return <ProtectedRoute Component={TaskDetailPage} />;
-}
+export default TaskDetailPage;

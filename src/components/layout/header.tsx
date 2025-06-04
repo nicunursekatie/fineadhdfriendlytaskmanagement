@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X, Plus, Brain, Award, Settings } from "lucide-react";
+import { Menu, X, Plus, Brain, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { fine } from "@/lib/fine";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { TaskForm } from "@/components/task-form";
+
+// Default user ID for single-user app
+const DEFAULT_USER_ID = "single-user";
 
 export function Header() {
   const isMobile = useIsMobile();
@@ -14,14 +16,21 @@ export function Header() {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { data: session } = fine.auth.useSession();
-  const isLoggedIn = !!session?.user;
-
   const handleCreateTask = async (formData: any) => {
     setIsSubmitting(true);
     try {
-      // Implementation will be in the main page
+      const newTask = {
+        ...formData,
+        status: "active",
+        createdAt: new Date().toISOString(),
+        userId: DEFAULT_USER_ID,
+        dueDate: formData.dueDate ? formData.dueDate.toISOString() : null,
+      };
+
+      await fine.table("tasks").insert(newTask).select();
+      
       setIsTaskDialogOpen(false);
+      window.location.reload(); // Simple refresh to show new task
     } catch (error) {
       console.error("Error creating task:", error);
     } finally {
@@ -77,20 +86,6 @@ export function Header() {
               />
             </DialogContent>
           </Dialog>
-
-          {isLoggedIn ? (
-            <Link to="/logout">
-              <Button variant="outline" size="sm">
-                Logout
-              </Button>
-            </Link>
-          ) : (
-            <Link to="/login">
-              <Button variant="outline" size="sm">
-                Login
-              </Button>
-            </Link>
-          )}
 
           {/* Mobile Menu */}
           {isMobile && (

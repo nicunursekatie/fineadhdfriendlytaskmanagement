@@ -11,8 +11,10 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Brain, Edit, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { format } from "date-fns";
-import { ProtectedRoute } from "@/components/auth/route-components";
 import type { Schema } from "@/lib/db-types";
+
+// Default user ID for single-user app
+const DEFAULT_USER_ID = "single-user";
 
 const BrainDumpPage = () => {
   const [brainDumps, setBrainDumps] = useState<(Schema["brainDumps"] & { id: number })[]>([]);
@@ -23,20 +25,17 @@ const BrainDumpPage = () => {
   
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { data: session } = fine.auth.useSession();
 
   useEffect(() => {
-    if (session?.user) {
-      fetchBrainDumps();
-    }
-  }, [session]);
+    fetchBrainDumps();
+  }, []);
 
   const fetchBrainDumps = async () => {
     setIsLoading(true);
     try {
       const fetchedDumps = await fine.table("brainDumps")
         .select("*")
-        .eq("userId", session!.user.id)
+        .eq("userId", DEFAULT_USER_ID)
         .order("createdAt", { ascending: false });
       
       setBrainDumps(fetchedDumps as any);
@@ -58,7 +57,7 @@ const BrainDumpPage = () => {
       const newDump = {
         content,
         createdAt: new Date().toISOString(),
-        userId: session!.user.id,
+        userId: DEFAULT_USER_ID,
       };
 
       const createdDumps = await fine.table("brainDumps").insert(newDump).select();
@@ -275,6 +274,4 @@ const BrainDumpPage = () => {
   );
 };
 
-export default function BrainDumpPageWrapper() {
-  return <ProtectedRoute Component={BrainDumpPage} />;
-}
+export default BrainDumpPage;

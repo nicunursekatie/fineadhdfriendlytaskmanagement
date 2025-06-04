@@ -11,9 +11,6 @@ import { TooltipProvider } from "./components/ui/tooltip";
 import { ThemeProvider } from "./components/layout/theme-provider";
 import "./index.css";
 import Index from "./pages";
-import LoginForm from "./pages/login";
-import SignupForm from "./pages/signup";
-import Logout from "./pages/logout";
 import BrainDumpPage from "./pages/brain-dump";
 import AchievementsPage from "./pages/achievements";
 import TaskDetailPage from "./pages/task-detail";
@@ -27,9 +24,6 @@ createRoot(document.getElementById("root")!).render(
         <BrowserRouter>
           <Routes>
             <Route path='/' element={<Index />} />
-            <Route path='/login' element={<LoginForm />} />
-            <Route path='/signup' element={<SignupForm />} />
-            <Route path='/logout' element={<Logout />} />
             <Route path='/brain-dump' element={<BrainDumpPage />} />
             <Route path='/achievements' element={<AchievementsPage />} />
             <Route path='/task/:taskId' element={<TaskDetailPage />} />

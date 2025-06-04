@@ -17,6 +17,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Brain, Filter, ListFilter, Plus, Sparkles, Zap } from "lucide-react";
 import type { Schema } from "@/lib/db-types";
 
+// Default user ID for single-user app
+const DEFAULT_USER_ID = "single-user";
+
 const Dashboard = () => {
   const [tasks, setTasks] = useState<(Schema["tasks"] & { id: number })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,21 +34,17 @@ const Dashboard = () => {
   
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { data: session } = fine.auth.useSession();
-  const isLoggedIn = !!session?.user;
 
   useEffect(() => {
-    if (isLoggedIn) {
-      fetchTasks();
-    }
-  }, [isLoggedIn]);
+    fetchTasks();
+  }, []);
 
   const fetchTasks = async () => {
     setIsLoading(true);
     try {
       const fetchedTasks = await fine.table("tasks")
         .select("*")
-        .eq("userId", session!.user.id)
+        .eq("userId", DEFAULT_USER_ID)
         .order("createdAt", { ascending: false });
       
       setTasks(fetchedTasks as any);
@@ -62,23 +61,13 @@ const Dashboard = () => {
   };
 
   const handleCreateTask = async (formData: any) => {
-    if (!isLoggedIn) {
-      toast({
-        title: "Not logged in",
-        description: "Please log in to create tasks",
-        variant: "destructive",
-      });
-      navigate("/login");
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       const newTask = {
         ...formData,
         status: "active",
         createdAt: new Date().toISOString(),
-        userId: session!.user.id,
+        userId: DEFAULT_USER_ID,
         dueDate: formData.dueDate ? formData.dueDate.toISOString() : null,
       };
 
@@ -191,62 +180,60 @@ const Dashboard = () => {
         });
         
         // Create achievement record
-        if (isLoggedIn) {
-          try {
-            await fine.table("achievements").insert({
-              title: "Task Completed",
-              description: `Completed task: ${task.title}`,
-              createdAt: new Date().toISOString(),
-              userId: session!.user.id,
+        try {
+          await fine.table("achievements").insert({
+            title: "Task Completed",
+            description: `Completed task: ${task.title}`,
+            createdAt: new Date().toISOString(),
+            userId: DEFAULT_USER_ID,
+          });
+          
+          // Update streak
+          const streaks = await fine.table("streaks")
+            .select("*")
+            .eq("userId", DEFAULT_USER_ID);
+          
+          const now = new Date().toISOString();
+          
+          if (streaks.length === 0) {
+            // Create new streak
+            await fine.table("streaks").insert({
+              count: 1,
+              lastCompletedAt: now,
+              userId: DEFAULT_USER_ID,
             });
+          } else {
+            // Update existing streak
+            const streak = streaks[0] as any;
+            const lastDate = new Date(streak.lastCompletedAt);
+            const today = new Date();
             
-            // Update streak
-            const streaks = await fine.table("streaks")
-              .select("*")
-              .eq("userId", session!.user.id);
+            // Check if the last completion was yesterday or earlier today
+            const isConsecutive = 
+              (today.getDate() === lastDate.getDate() && 
+               today.getMonth() === lastDate.getMonth() && 
+               today.getFullYear() === lastDate.getFullYear()) || 
+              (today.getDate() - lastDate.getDate() === 1);
             
-            const now = new Date().toISOString();
-            
-            if (streaks.length === 0) {
-              // Create new streak
-              await fine.table("streaks").insert({
-                count: 1,
-                lastCompletedAt: now,
-                userId: session!.user.id,
-              });
+            if (isConsecutive) {
+              await fine.table("streaks")
+                .update({ 
+                  count: streak.count + 1,
+                  lastCompletedAt: now,
+                })
+                .eq("id", streak.id);
             } else {
-              // Update existing streak
-              const streak = streaks[0] as any;
-              const lastDate = new Date(streak.lastCompletedAt);
-              const today = new Date();
-              
-              // Check if the last completion was yesterday or earlier today
-              const isConsecutive = 
-                (today.getDate() === lastDate.getDate() && 
-                 today.getMonth() === lastDate.getMonth() && 
-                 today.getFullYear() === lastDate.getFullYear()) || 
-                (today.getDate() - lastDate.getDate() === 1);
-              
-              if (isConsecutive) {
-                await fine.table("streaks")
-                  .update({ 
-                    count: streak.count + 1,
-                    lastCompletedAt: now,
-                  })
-                  .eq("id", streak.id);
-              } else {
-                // Reset streak
-                await fine.table("streaks")
-                  .update({ 
-                    count: 1,
-                    lastCompletedAt: now,
-                  })
-                  .eq("id", streak.id);
-              }
+              // Reset streak
+              await fine.table("streaks")
+                .update({ 
+                  count: 1,
+                  lastCompletedAt: now,
+                })
+                .eq("id", streak.id);
             }
-          } catch (error) {
-            console.error("Error updating achievements/streaks:", error);
           }
+        } catch (error) {
+          console.error("Error updating achievements/streaks:", error);
         }
       }
     } catch (error) {
@@ -260,21 +247,11 @@ const Dashboard = () => {
   };
 
   const handleSaveBrainDump = async (content: string) => {
-    if (!isLoggedIn) {
-      toast({
-        title: "Not logged in",
-        description: "Please log in to save brain dumps",
-        variant: "destructive",
-      });
-      navigate("/login");
-      return;
-    }
-
     try {
       await fine.table("brainDumps").insert({
         content,
         createdAt: new Date().toISOString(),
-        userId: session!.user.id,
+        userId: DEFAULT_USER_ID,
       });
       
       toast({
@@ -342,290 +319,270 @@ const Dashboard = () => {
       <Header />
       
       <main className="flex-1 container mx-auto px-4 py-6">
-        {!isLoggedIn ? (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-            <Brain className="h-16 w-16 text-primary mb-4" />
-            <h1 className="text-3xl font-bold mb-2">Welcome to Focus Flow</h1>
-            <p className="text-muted-foreground mb-6 max-w-md">
-              A neurodivergent-friendly task management system designed specifically for people with ADHD.
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Current Energy Level */}
+          <div className="col-span-1 p-6 border rounded-lg bg-card">
+            <h2 className="text-lg font-medium mb-4">Current Energy Level</h2>
+            <EnergySelector 
+              value={currentEnergyLevel} 
+              onChange={setCurrentEnergyLevel} 
+              className="mb-2"
+            />
+            <p className="text-sm text-muted-foreground">
+              Set your current energy level to get matching task suggestions
             </p>
-            <div className="flex gap-4">
-              <Button onClick={() => navigate("/login")}>
-                Login
+          </div>
+          
+          {/* Task Completion Progress */}
+          <div className="col-span-1 p-6 border rounded-lg bg-card">
+            <h2 className="text-lg font-medium mb-4">Task Progress</h2>
+            <ProgressBar 
+              value={completedCount} 
+              max={totalTasks} 
+              variant={completionRate > 75 ? "success" : completionRate > 25 ? "warning" : "default"}
+            />
+            <p className="text-sm text-muted-foreground mt-2">
+              {completedCount} of {totalTasks} tasks completed
+            </p>
+          </div>
+          
+          {/* Quick Actions */}
+          <div className="col-span-1 p-6 border rounded-lg bg-card">
+            <h2 className="text-lg font-medium mb-4">Quick Actions</h2>
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                onClick={() => {
+                  setEditingTask(null);
+                  setIsTaskDialogOpen(true);
+                }}
+                className="gap-1"
+              >
+                <Plus className="h-4 w-4" />
+                New Task
               </Button>
-              <Button variant="outline" onClick={() => navigate("/signup")}>
-                Sign Up
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/brain-dump")}
+                className="gap-1"
+              >
+                <Sparkles className="h-4 w-4" />
+                Brain Dump
               </Button>
             </div>
           </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              {/* Current Energy Level */}
-              <div className="col-span-1 p-6 border rounded-lg bg-card">
-                <h2 className="text-lg font-medium mb-4">Current Energy Level</h2>
-                <EnergySelector 
-                  value={currentEnergyLevel} 
-                  onChange={setCurrentEnergyLevel} 
-                  className="mb-2"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Set your current energy level to get matching task suggestions
-                </p>
-              </div>
-              
-              {/* Task Completion Progress */}
-              <div className="col-span-1 p-6 border rounded-lg bg-card">
-                <h2 className="text-lg font-medium mb-4">Task Progress</h2>
-                <ProgressBar 
-                  value={completedCount} 
-                  max={totalTasks} 
-                  variant={completionRate > 75 ? "success" : completionRate > 25 ? "warning" : "default"}
-                />
-                <p className="text-sm text-muted-foreground mt-2">
-                  {completedCount} of {totalTasks} tasks completed
-                </p>
-              </div>
-              
-              {/* Quick Actions */}
-              <div className="col-span-1 p-6 border rounded-lg bg-card">
-                <h2 className="text-lg font-medium mb-4">Quick Actions</h2>
-                <div className="flex flex-wrap gap-2">
-                  <Button 
-                    onClick={() => {
-                      setEditingTask(null);
-                      setIsTaskDialogOpen(true);
-                    }}
-                    className="gap-1"
-                  >
-                    <Plus className="h-4 w-4" />
-                    New Task
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => navigate("/brain-dump")}
-                    className="gap-1"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    Brain Dump
-                  </Button>
-                </div>
-              </div>
-            </div>
-            
-            {/* Brain Dump Quick Entry */}
-            <div className="mb-8">
-              <BrainDumpEditor 
-                onSave={handleSaveBrainDump} 
-                isSubmitting={isSubmitting} 
-              />
-            </div>
-            
-            {/* Task Filters */}
-            <div className="flex flex-wrap items-center gap-4 mb-6">
-              <div className="flex items-center gap-2">
-                <ListFilter className="h-5 w-5 text-muted-foreground" />
-                <span className="font-medium">Filters:</span>
-              </div>
-              
-              <Select
-                value={activeContext || ""}
-                onValueChange={(value) => setActiveContext(value || null)}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select Context" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Contexts</SelectItem>
-                  {contexts.map(context => (
-                    <SelectItem key={context} value={context}>
-                      {context.charAt(0).toUpperCase() + context.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select
-                value={activePriority || ""}
-                onValueChange={(value) => setActivePriority(value || null)}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select Priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Priorities</SelectItem>
-                  {priorities.map(priority => (
-                    <SelectItem key={priority} value={priority}>
-                      {priority.charAt(0).toUpperCase() + priority.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {(activeContext || activePriority) && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => {
-                    setActiveContext(null);
-                    setActivePriority(null);
-                  }}
-                >
-                  Clear Filters
-                </Button>
-              )}
-            </div>
-            
-            {/* Tasks Tabs */}
-            <Tabs defaultValue="suggested" className="mb-8">
-              <TabsList className="mb-4">
-                <TabsTrigger value="suggested" className="gap-1">
-                  <Zap className="h-4 w-4" />
-                  Suggested
-                </TabsTrigger>
-                <TabsTrigger value="all">All Tasks</TabsTrigger>
-                <TabsTrigger value="completed">Completed</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="suggested" className="space-y-6">
-                {/* Energy Matched Tasks */}
-                {energyMatchedTasks.length > 0 && (
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                      <Filter className="h-5 w-5 text-primary" />
-                      Energy Matched Tasks
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {energyMatchedTasks.slice(0, 3).map(task => (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          onComplete={handleCompleteTask}
-                          onEdit={(id) => {
-                            setEditingTask(tasks.find(t => t.id === id) || null);
-                            setIsTaskDialogOpen(true);
-                          }}
-                          onDelete={(id) => setDeleteTaskId(id)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Urgent Tasks */}
-                {urgentTasks.length > 0 && (
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                      <Filter className="h-5 w-5 text-destructive" />
-                      Urgent Tasks
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {urgentTasks.slice(0, 3).map(task => (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          onComplete={handleCompleteTask}
-                          onEdit={(id) => {
-                            setEditingTask(tasks.find(t => t.id === id) || null);
-                            setIsTaskDialogOpen(true);
-                          }}
-                          onDelete={(id) => setDeleteTaskId(id)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Quick Win Tasks */}
-                {quickWinTasks.length > 0 && (
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                      <Filter className="h-5 w-5 text-emerald-500" />
-                      Quick Wins
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {quickWinTasks.slice(0, 3).map(task => (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          onComplete={handleCompleteTask}
-                          onEdit={(id) => {
-                            setEditingTask(tasks.find(t => t.id === id) || null);
-                            setIsTaskDialogOpen(true);
-                          }}
-                          onDelete={(id) => setDeleteTaskId(id)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {energyMatchedTasks.length === 0 && urgentTasks.length === 0 && quickWinTasks.length === 0 && (
-                  <div className="text-center py-12">
-                    <p className="text-muted-foreground">No suggested tasks found. Try adjusting your energy level or adding new tasks.</p>
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="all">
-                {filteredTasks.filter(task => task.status !== "completed").length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredTasks
-                      .filter(task => task.status !== "completed")
-                      .map(task => (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          onComplete={handleCompleteTask}
-                          onEdit={(id) => {
-                            setEditingTask(tasks.find(t => t.id === id) || null);
-                            setIsTaskDialogOpen(true);
-                          }}
-                          onDelete={(id) => setDeleteTaskId(id)}
-                        />
-                      ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <p className="text-muted-foreground">No active tasks found. Create a new task to get started!</p>
-                    <Button 
-                      onClick={() => {
-                        setEditingTask(null);
+        </div>
+        
+        {/* Brain Dump Quick Entry */}
+        <div className="mb-8">
+          <BrainDumpEditor 
+            onSave={handleSaveBrainDump} 
+            isSubmitting={isSubmitting} 
+          />
+        </div>
+        
+        {/* Task Filters */}
+        <div className="flex flex-wrap items-center gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <ListFilter className="h-5 w-5 text-muted-foreground" />
+            <span className="font-medium">Filters:</span>
+          </div>
+          
+          <Select
+            value={activeContext || ""}
+            onValueChange={(value) => setActiveContext(value || null)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select Context" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Contexts</SelectItem>
+              {contexts.map(context => (
+                <SelectItem key={context} value={context}>
+                  {context.charAt(0).toUpperCase() + context.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Select
+            value={activePriority || ""}
+            onValueChange={(value) => setActivePriority(value || null)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select Priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Priorities</SelectItem>
+              {priorities.map(priority => (
+                <SelectItem key={priority} value={priority}>
+                  {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          {(activeContext || activePriority) && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => {
+                setActiveContext(null);
+                setActivePriority(null);
+              }}
+            >
+              Clear Filters
+            </Button>
+          )}
+        </div>
+        
+        {/* Tasks Tabs */}
+        <Tabs defaultValue="suggested" className="mb-8">
+          <TabsList className="mb-4">
+            <TabsTrigger value="suggested" className="gap-1">
+              <Zap className="h-4 w-4" />
+              Suggested
+            </TabsTrigger>
+            <TabsTrigger value="all">All Tasks</TabsTrigger>
+            <TabsTrigger value="completed">Completed</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="suggested" className="space-y-6">
+            {/* Energy Matched Tasks */}
+            {energyMatchedTasks.length > 0 && (
+              <div>
+                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                  <Filter className="h-5 w-5 text-primary" />
+                  Energy Matched Tasks
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {energyMatchedTasks.slice(0, 3).map(task => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onComplete={handleCompleteTask}
+                      onEdit={(id) => {
+                        setEditingTask(tasks.find(t => t.id === id) || null);
                         setIsTaskDialogOpen(true);
                       }}
-                      className="mt-4"
-                    >
-                      Create Task
-                    </Button>
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="completed">
-                {completedTasks.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {completedTasks.map(task => (
-                      <TaskCard
-                        key={task.id}
-                        task={task}
-                        onComplete={handleCompleteTask}
-                        onEdit={(id) => {
-                          setEditingTask(tasks.find(t => t.id === id) || null);
-                          setIsTaskDialogOpen(true);
-                        }}
-                        onDelete={(id) => setDeleteTaskId(id)}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <p className="text-muted-foreground">No completed tasks yet. Complete a task to see it here!</p>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </>
-        )}
+                      onDelete={(id) => setDeleteTaskId(id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Urgent Tasks */}
+            {urgentTasks.length > 0 && (
+              <div>
+                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                  <Filter className="h-5 w-5 text-destructive" />
+                  Urgent Tasks
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {urgentTasks.slice(0, 3).map(task => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onComplete={handleCompleteTask}
+                      onEdit={(id) => {
+                        setEditingTask(tasks.find(t => t.id === id) || null);
+                        setIsTaskDialogOpen(true);
+                      }}
+                      onDelete={(id) => setDeleteTaskId(id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Quick Win Tasks */}
+            {quickWinTasks.length > 0 && (
+              <div>
+                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                  <Filter className="h-5 w-5 text-emerald-500" />
+                  Quick Wins
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {quickWinTasks.slice(0, 3).map(task => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onComplete={handleCompleteTask}
+                      onEdit={(id) => {
+                        setEditingTask(tasks.find(t => t.id === id) || null);
+                        setIsTaskDialogOpen(true);
+                      }}
+                      onDelete={(id) => setDeleteTaskId(id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {energyMatchedTasks.length === 0 && urgentTasks.length === 0 && quickWinTasks.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No suggested tasks found. Try adjusting your energy level or adding new tasks.</p>
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="all">
+            {filteredTasks.filter(task => task.status !== "completed").length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredTasks
+                  .filter(task => task.status !== "completed")
+                  .map(task => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onComplete={handleCompleteTask}
+                      onEdit={(id) => {
+                        setEditingTask(tasks.find(t => t.id === id) || null);
+                        setIsTaskDialogOpen(true);
+                      }}
+                      onDelete={(id) => setDeleteTaskId(id)}
+                    />
+                  ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No active tasks found. Create a new task to get started!</p>
+                <Button 
+                  onClick={() => {
+                    setEditingTask(null);
+                    setIsTaskDialogOpen(true);
+                  }}
+                  className="mt-4"
+                >
+                  Create Task
+                </Button>
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="completed">
+            {completedTasks.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {completedTasks.map(task => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onComplete={handleCompleteTask}
+                    onEdit={(id) => {
+                      setEditingTask(tasks.find(t => t.id === id) || null);
+                      setIsTaskDialogOpen(true);
+                    }}
+                    onDelete={(id) => setDeleteTaskId(id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No completed tasks yet. Complete a task to see it here!</p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </main>
       
       {/* Task Edit/Create Dialog */}

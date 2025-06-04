@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Award, Calendar, CheckCircle, Flame, Loader2, Medal, Star, Trophy } from "lucide-react";
 import { format } from "date-fns";
-import { ProtectedRoute } from "@/components/auth/route-components";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import type { Schema } from "@/lib/db-types";
+
+// Default user ID for single-user app
+const DEFAULT_USER_ID = "single-user";
 
 const AchievementsPage = () => {
   const [achievements, setAchievements] = useState<(Schema["achievements"] & { id: number })[]>([]);
@@ -20,13 +22,10 @@ const AchievementsPage = () => {
   
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { data: session } = fine.auth.useSession();
 
   useEffect(() => {
-    if (session?.user) {
-      fetchData();
-    }
-  }, [session]);
+    fetchData();
+  }, []);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -34,7 +33,7 @@ const AchievementsPage = () => {
       // Fetch achievements
       const fetchedAchievements = await fine.table("achievements")
         .select("*")
-        .eq("userId", session!.user.id)
+        .eq("userId", DEFAULT_USER_ID)
         .order("createdAt", { ascending: false });
       
       setAchievements(fetchedAchievements as any);
@@ -42,7 +41,7 @@ const AchievementsPage = () => {
       // Fetch streak
       const streaks = await fine.table("streaks")
         .select("*")
-        .eq("userId", session!.user.id);
+        .eq("userId", DEFAULT_USER_ID);
       
       if (streaks.length > 0) {
         setStreak(streaks[0] as any);
@@ -51,7 +50,7 @@ const AchievementsPage = () => {
       // Fetch task counts
       const tasks = await fine.table("tasks")
         .select("*")
-        .eq("userId", session!.user.id);
+        .eq("userId", DEFAULT_USER_ID);
       
       const total = tasks.length;
       const completed = tasks.filter((task: any) => task.status === "completed").length;
@@ -264,6 +263,4 @@ const AchievementsPage = () => {
   );
 };
 
-export default function AchievementsPageWrapper() {
-  return <ProtectedRoute Component={AchievementsPage} />;
-}
+export default AchievementsPage;
