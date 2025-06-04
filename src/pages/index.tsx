@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Brain, Filter, Lightning, ListFilter, Plus, Sparkles } from "lucide-react";
+import { Brain, Filter, ListFilter, Plus, Sparkles, Zap } from "lucide-react";
 import type { Schema } from "@/lib/db-types";
 
 const Dashboard = () => {
@@ -480,7 +480,7 @@ const Dashboard = () => {
             <Tabs defaultValue="suggested" className="mb-8">
               <TabsList className="mb-4">
                 <TabsTrigger value="suggested" className="gap-1">
-                  <Lightning className="h-4 w-4" />
+                  <Zap className="h-4 w-4" />
                   Suggested
                 </TabsTrigger>
                 <TabsTrigger value="all">All Tasks</TabsTrigger>

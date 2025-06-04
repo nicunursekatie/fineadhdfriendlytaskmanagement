@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Award, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import confetti from "canvas-confetti";
 
 interface AchievementNotificationProps {
   title: string;
@@ -19,13 +18,6 @@ export function AchievementNotification({
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    // Trigger confetti when the achievement notification appears
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
-    });
-
     // Auto-dismiss after 5 seconds
     const timer = setTimeout(() => {
       handleClose();

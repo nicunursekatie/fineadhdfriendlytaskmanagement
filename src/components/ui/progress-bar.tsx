@@ -29,8 +29,9 @@ export function ProgressBar({
     <div className={cn("w-full space-y-1", className)}>
       <Progress 
         value={percentage} 
-        className="h-2" 
-        indicatorClassName={variantClasses[variant]} 
+        className={cn("h-2", "[&>div]:bg-primary", variant === "success" && "[&>div]:bg-emerald-500", 
+                      variant === "warning" && "[&>div]:bg-amber-500", 
+                      variant === "danger" && "[&>div]:bg-red-500")}
       />
       {showLabel && (
         <div className="flex justify-between text-xs text-muted-foreground">

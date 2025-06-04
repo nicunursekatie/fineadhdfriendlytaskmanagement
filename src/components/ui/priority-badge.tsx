@@ -10,41 +10,46 @@ interface PriorityBadgeProps {
 }
 
 export function PriorityBadge({ priority, className }: PriorityBadgeProps) {
-  const config = {
+  const config: Record<PriorityType, {
+    label: string;
+    icon: React.ElementType;
+    variant: "destructive" | "default" | "secondary" | "outline";
+    customClass?: string;
+  }> = {
     "urgent": {
       label: "Urgent",
       icon: AlertCircle,
-      variant: "destructive" as const,
+      variant: "destructive",
     },
     "important": {
       label: "Important",
       icon: AlertTriangle,
-      variant: "default" as const,
+      variant: "default",
     },
     "medium": {
       label: "Medium",
       icon: ArrowUp,
-      variant: "secondary" as const,
+      variant: "secondary",
     },
     "low": {
       label: "Low",
       icon: ArrowDown,
-      variant: "outline" as const,
+      variant: "outline",
     },
     "quick-win": {
       label: "Quick Win",
       icon: Zap,
-      variant: "default" as const,
-      className: "bg-emerald-500 hover:bg-emerald-600",
+      variant: "default",
+      customClass: "bg-emerald-500 hover:bg-emerald-600",
     },
   };
 
-  const { label, icon: Icon, variant, className: priorityClassName } = config[priority];
+  const { label, icon: Icon, variant, customClass } = config[priority];
 
   return (
     <Badge 
       variant={variant} 
-      className={cn("gap-1", priorityClassName, className)}
+      className={cn("gap-1", customClass, className)}
     >
       <Icon className="h-3 w-3" />
       <span>{label}</span>
