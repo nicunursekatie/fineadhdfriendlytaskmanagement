@@ -391,17 +391,18 @@ const Dashboard = () => {
             value={activeContext || ""}
             onValueChange={(value) => setActiveContext(value || null)}
           >
-            <SelectTrigger className="w-[180px]">
+           <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select Context" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Contexts</SelectItem>
-              {contexts.map(context => (
+           </SelectTrigger>
+           <SelectContent>
+             <SelectItem value="all">All Contexts</SelectItem>
+             {contexts.map(context => (
                 <SelectItem key={context} value={context}>
-                  {context.charAt(0).toUpperCase() + context.slice(1)}
+                   {context.charAt(0).toUpperCase() + context.slice(1)}
                 </SelectItem>
               ))}
-            </SelectContent>
+           </SelectContent>
+
           </Select>
           
           <Select
