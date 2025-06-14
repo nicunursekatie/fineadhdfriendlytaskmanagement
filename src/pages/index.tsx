@@ -413,7 +413,7 @@ const Dashboard = () => {
               <SelectValue placeholder="Select Priority" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Priorities</SelectItem>
+              <SelectItem value="all">All Priorities</SelectItem>
               {priorities.map(priority => (
                 <SelectItem key={priority} value={priority}>
                   {priority.charAt(0).toUpperCase() + priority.slice(1)}
