@@ -43,15 +43,16 @@ export function TaskForm({ initialData, onSubmit, isSubmitting }: TaskFormProps)
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: initialData?.title || "",
-      description: initialData?.description || "",
-      priority: (initialData?.priority as any) || "medium",
-      energyLevel: initialData?.energyLevel || 3,
-      emotionalImportance: initialData?.emotionalImportance || 50,
-      estimatedTime: initialData?.estimatedTime || 30,
-      context: initialData?.context || "work",
-      dueDate: initialData?.dueDate ? new Date(initialData.dueDate) : null,
-    },
+    title: initialData?.title || "",
+    description: initialData?.description || "",
+    priority: initialData?.priority?.trim() ? initialData.priority : "medium",
+    energyLevel: initialData?.energyLevel || 3,
+    emotionalImportance: initialData?.emotionalImportance || 50,
+    estimatedTime: initialData?.estimatedTime || 30,
+    context: initialData?.context?.trim() ? initialData.context : "work",
+    dueDate: initialData?.dueDate ? new Date(initialData.dueDate) : null,
+  },
+
   });
 
   const handleSubmit = async (values: FormValues) => {
